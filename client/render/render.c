@@ -69,6 +69,86 @@ static void draw_texture_preview(Texture *tex, float x, float y, float w, float 
     glDisable(GL_BLEND);
 }
 
+static Texture *get_character_grid_texture(int character_index) {
+    static const char *character_paths[] = {
+        "textures/lord.ppm",
+        "textures/ohyea.ppm",
+        "textures/player_blue.ppm",
+        "textures/player_yellow.ppm",
+        "textures/player_red.ppm",
+        "textures/player_green.ppm"
+    };
+    static Texture *cached[6] = {NULL};
+    static int attempted[6] = {0};
+
+    if (character_index < 0 || character_index >= 6) {
+        return NULL;
+    }
+
+    if (!attempted[character_index]) {
+        attempted[character_index] = 1;
+        cached[character_index] = texture_load_ppm(character_paths[character_index]);
+        if (!cached[character_index]) {
+            unsigned char fallback_colors[6][3] = {
+                {255, 0, 0},
+                {0, 255, 0},
+                {0, 0, 255},
+                {255, 255, 0},
+                {255, 0, 255},
+                {0, 255, 255}
+            };
+            cached[character_index] = texture_create_placeholder(
+                32, 64,
+                fallback_colors[character_index][0],
+                fallback_colors[character_index][1],
+                fallback_colors[character_index][2]
+            );
+        }
+    }
+
+    return cached[character_index];
+}
+
+static void draw_character_grid(float y) {
+    int count = game_get_character_count();
+    if (count <= 0) {
+        return;
+    }
+
+    const float cell_w = 46.0f;
+    const float cell_h = 62.0f;
+    const float gap = 8.0f;
+    const float total_w = (count * cell_w) + ((count - 1) * gap);
+    const float start_x = ((float)WIDTH - total_w) * 0.5f;
+    const int selected = game_get_player_character(g_game.local_player_id);
+
+    glColor3f(0.08f, 0.10f, 0.14f);
+    glBegin(GL_QUADS);
+    glVertex2f(start_x - 18.0f, y - 14.0f);
+    glVertex2f(start_x + total_w + 18.0f, y - 14.0f);
+    glVertex2f(start_x + total_w + 18.0f, y + cell_h + 14.0f);
+    glVertex2f(start_x - 18.0f, y + cell_h + 14.0f);
+    glEnd();
+
+    for (int i = 0; i < count; ++i) {
+        float x = start_x + i * (cell_w + gap);
+        Texture *tex = get_character_grid_texture(i);
+        draw_texture_preview(tex, x, y, cell_w, cell_h);
+
+        if (i == selected) {
+            glLineWidth(3.0f);
+            glColor3f(1.0f, 0.92f, 0.30f);
+            glBegin(GL_LINE_LOOP);
+            glVertex2f(x - 8.0f, y - 8.0f);
+            glVertex2f(x + cell_w + 8.0f, y - 8.0f);
+            glVertex2f(x + cell_w + 8.0f, y + cell_h + 8.0f);
+            glVertex2f(x - 8.0f, y + cell_h + 8.0f);
+            glEnd();
+            glLineWidth(1.0f);
+        }
+    }
+}
+
 static void render_lobby_screen(void) {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -99,24 +179,6 @@ static void render_lobby_screen(void) {
         draw_text(40.0f, 345.0f, GLUT_BITMAP_HELVETICA_12, texture_label);
     }
 
-    {
-        int local_selected = game_get_player_character(g_game.local_player_id);
-        char selected_label[196];
-        snprintf(selected_label, sizeof(selected_label), "Selected fighter: %s", game_get_character_name(local_selected));
-        glColor3f(1.0f, 0.95f, 0.65f);
-        draw_text(40.0f, 362.0f, GLUT_BITMAP_HELVETICA_12, selected_label);
-    }
-
-    glColor3f(0.85f, 0.90f, 1.0f);
-    draw_text(40.0f, 390.0f, GLUT_BITMAP_HELVETICA_12, "Available fighters:");
-    for (int i = 0; i < game_get_character_count(); ++i) {
-        const int is_selected = (i == game_get_player_character(g_game.local_player_id));
-        char fighter_line[128];
-        snprintf(fighter_line, sizeof(fighter_line), "%s %s", is_selected ? ">" : " ", game_get_character_name(i));
-        glColor3f(is_selected ? 1.0f : 0.8f, is_selected ? 0.95f : 0.8f, is_selected ? 0.45f : 0.85f);
-        draw_text(40.0f, (float)(408 + i * 14), GLUT_BITMAP_HELVETICA_12, fighter_line);
-    }
-
     int y = 145;
     for (int i = 0; i < MAX_PLAYERS; ++i) {
         if (!game_get_connected_player(i)) {
@@ -125,9 +187,8 @@ static void render_lobby_screen(void) {
 
         const int is_local = (i == g_game.local_player_id);
         const int is_ready = game_get_player_ready(i);
-        const int selected = game_get_player_character(i);
         char line[128];
-        snprintf(line, sizeof(line), "Player %d%s  -  %s  -  %s", i, is_local ? " (You)" : "", is_ready ? "READY" : "NOT READY", game_get_character_name(selected));
+        snprintf(line, sizeof(line), "Player %d%s  -  %s", i, is_local ? " (You)" : "", is_ready ? "READY" : "NOT READY");
 
         if (is_ready) {
             glColor3f(0.4f, 1.0f, 0.5f);
@@ -138,11 +199,13 @@ static void render_lobby_screen(void) {
         y += 30;
     }
 
+    draw_character_grid((float)(HEIGHT - 96));
+
     glColor3f(0.9f, 0.9f, 0.9f);
     if (game_get_local_ready()) {
-        draw_text(40.0f, (float)(HEIGHT - 60), GLUT_BITMAP_HELVETICA_18, "You are READY. Waiting for others...");
+        draw_text(40.0f, (float)(HEIGHT - 172), GLUT_BITMAP_HELVETICA_18, "You are READY. Waiting for others...");
     } else {
-        draw_text(40.0f, (float)(HEIGHT - 60), GLUT_BITMAP_HELVETICA_18, "You are NOT READY. Press R when ready.");
+        draw_text(40.0f, (float)(HEIGHT - 172), GLUT_BITMAP_HELVETICA_18, "You are NOT READY. Press R when ready.");
     }
 }
 
