@@ -62,6 +62,20 @@ typedef struct {
     float angle;
 } PlayerUpdate;
 
+enum {
+    LOBBY_MSG_READY_TOGGLE = 1,
+    LOBBY_MSG_STATE = 2,
+    LOBBY_MSG_START = 3
+};
+
+typedef struct {
+    int msg_type;
+    int player_id;
+    int is_ready;
+    int connected[MAX_PLAYERS_CONST];
+    int ready[MAX_PLAYERS_CONST];
+} LobbyPacket;
+
 #ifdef __cplusplus
 }
 #endif

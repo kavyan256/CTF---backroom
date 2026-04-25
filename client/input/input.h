@@ -11,6 +11,7 @@ typedef struct {
 } PlayerInput;
 
 PlayerInput *input_get_current(void);
+int input_consume_ready_toggle(void);
 void input_init_callbacks(void);
 void input_apply_forces(void);
 

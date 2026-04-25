@@ -80,7 +80,7 @@ int create_client_listener(int *out_port) {
     return sock;
 }
 
-int connect_to_server(const char *server_ip, int listen_port, JoinResponse *out) {
+int connect_to_server(const char *server_ip, int listen_port, JoinResponse *out, int *out_server_sock) {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) {
         perror("socket");
@@ -117,6 +117,10 @@ int connect_to_server(const char *server_ip, int listen_port, JoinResponse *out)
         return -1;
     }
 
-    close(sock);
+    if (out_server_sock) {
+        *out_server_sock = sock;
+    } else {
+        close(sock);
+    }
     return 0;
 }

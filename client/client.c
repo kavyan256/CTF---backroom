@@ -17,6 +17,7 @@
 
 static pthread_t g_recv_thread;
 static int g_listener_sock = -1;
+static int g_server_sock = -1;
 
 static void on_shutdown(void) {
     log_info("Shutting down client...");
@@ -53,7 +54,16 @@ static void timer_cb(int value) {
         return;
     }
 
-    game_update_step();
+    if (!game_has_started() && input_consume_ready_toggle()) {
+        int ready = game_toggle_local_ready();
+        if (recv_thread_send_ready_state(ready) != 0) {
+            log_error("Failed to send ready state to server");
+        }
+    }
+
+    if (game_has_started()) {
+        game_update_step();
+    }
     glutPostRedisplay();
     glutTimerFunc((unsigned int)(DT * 1000.0f), timer_cb, 0);
 }
@@ -75,7 +85,7 @@ int main(int argc, char **argv) {
     }
 
     JoinResponse join;
-    if (connect_to_server(argv[1], listen_port, &join) != 0) {
+    if (connect_to_server(argv[1], listen_port, &join, &g_server_sock) != 0) {
         log_error("Failed to connect to server");
         close(g_listener_sock);
         return 1;
@@ -94,6 +104,8 @@ int main(int argc, char **argv) {
     sprite_manager_init();
     game_init(local_id, &join);
 
+    recv_thread_set_server_socket(g_server_sock);
+    g_server_sock = -1;
     if (recv_thread_start(&g_recv_thread) != 0) {
         log_error("Failed to start receive thread");
         on_shutdown();

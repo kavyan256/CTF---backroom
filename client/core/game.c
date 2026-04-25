@@ -27,7 +27,10 @@ void game_init(int local_player_id, const JoinResponse *join_info) {
         snprintf(g_game.texture_files[i], sizeof(g_game.texture_files[i]), "(none)");
         g_game.flag_hold_time[i] = 0.0f;
         g_game.flag_steals[i] = 0;
+        g_game.connected_players[i] = (join_info->players[i].ip[0] != '\0') ? 1 : 0;
+        g_game.ready_players[i] = 0;
     }
+    g_game.game_started = 0;
     g_game.flag_holder = -1;
     g_game.flag_steal_cooldown = 0.0f;
     
@@ -239,6 +242,73 @@ void game_update_player_position(int player_id, float x, float y, float angle) {
         g_game.players[player_id].angle = angle;
     }
     pthread_mutex_unlock(&g_game.player_mutex);
+}
+
+void game_set_player_ready(int player_id, int ready) {
+    pthread_mutex_lock(&g_game.player_mutex);
+    if (player_id >= 0 && player_id < MAX_PLAYERS) {
+        g_game.ready_players[player_id] = ready ? 1 : 0;
+    }
+    pthread_mutex_unlock(&g_game.player_mutex);
+}
+
+int game_get_player_ready(int player_id) {
+    int value = 0;
+    pthread_mutex_lock(&g_game.player_mutex);
+    if (player_id >= 0 && player_id < MAX_PLAYERS) {
+        value = g_game.ready_players[player_id];
+    }
+    pthread_mutex_unlock(&g_game.player_mutex);
+    return value;
+}
+
+void game_set_player_connected(int player_id, int connected) {
+    pthread_mutex_lock(&g_game.player_mutex);
+    if (player_id >= 0 && player_id < MAX_PLAYERS) {
+        g_game.connected_players[player_id] = connected ? 1 : 0;
+    }
+    pthread_mutex_unlock(&g_game.player_mutex);
+}
+
+int game_get_connected_player(int player_id) {
+    int value = 0;
+    pthread_mutex_lock(&g_game.player_mutex);
+    if (player_id >= 0 && player_id < MAX_PLAYERS) {
+        value = g_game.connected_players[player_id];
+    }
+    pthread_mutex_unlock(&g_game.player_mutex);
+    return value;
+}
+
+void game_set_game_started(int started) {
+    pthread_mutex_lock(&g_game.player_mutex);
+    g_game.game_started = started ? 1 : 0;
+    pthread_mutex_unlock(&g_game.player_mutex);
+}
+
+int game_has_started(void) {
+    int started;
+    pthread_mutex_lock(&g_game.player_mutex);
+    started = g_game.game_started;
+    pthread_mutex_unlock(&g_game.player_mutex);
+    return started;
+}
+
+int game_toggle_local_ready(void) {
+    int ready;
+    pthread_mutex_lock(&g_game.player_mutex);
+    ready = !g_game.ready_players[g_game.local_player_id];
+    g_game.ready_players[g_game.local_player_id] = ready;
+    pthread_mutex_unlock(&g_game.player_mutex);
+    return ready;
+}
+
+int game_get_local_ready(void) {
+    int ready;
+    pthread_mutex_lock(&g_game.player_mutex);
+    ready = g_game.ready_players[g_game.local_player_id];
+    pthread_mutex_unlock(&g_game.player_mutex);
+    return ready;
 }
 
 int game_is_local_region(float x, float y, int player_id) {

@@ -16,6 +16,9 @@ typedef struct {
 typedef struct {
     int local_player_id;
     JoinResponse join_info;
+    int connected_players[MAX_PLAYERS];
+    int ready_players[MAX_PLAYERS];
+    int game_started;
 
     /* FPS mode */
     PlayerState players[MAX_PLAYERS];
@@ -37,6 +40,14 @@ void game_shutdown(void);
 
 void game_update_step(void);
 void game_update_player_position(int player_id, float x, float y, float angle);
+void game_set_player_ready(int player_id, int ready);
+int game_get_player_ready(int player_id);
+void game_set_player_connected(int player_id, int connected);
+int game_get_connected_player(int player_id);
+void game_set_game_started(int started);
+int game_has_started(void);
+int game_toggle_local_ready(void);
+int game_get_local_ready(void);
 
 int game_get_flag_holder(void);
 float game_get_flag_hold_time(int player_id);

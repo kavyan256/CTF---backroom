@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -17,6 +18,47 @@ typedef struct {
     struct sockaddr_in addr;
     JoinRequest join_req;
 } ClientConn;
+
+static int send_all(int sock, const void *buffer, size_t size);
+
+static int all_connected_ready(const int *connected, const int *ready) {
+    for (int i = 0; i < MAX_PLAYERS; ++i) {
+        if (connected[i] && !ready[i]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static int broadcast_lobby_state(ClientConn *clients, int connected_players, const int *connected, const int *ready) {
+    LobbyPacket state;
+    memset(&state, 0, sizeof(state));
+    state.msg_type = LOBBY_MSG_STATE;
+    for (int i = 0; i < MAX_PLAYERS; ++i) {
+        state.connected[i] = connected[i] ? 1 : 0;
+        state.ready[i] = ready[i] ? 1 : 0;
+    }
+
+    for (int i = 0; i < connected_players; ++i) {
+        if (send_all(clients[i].sock, &state, sizeof(state)) != 0) {
+            log_error("Failed sending lobby state to client %d: %s", i, strerror(errno));
+            return -1;
+        }
+    }
+    return 0;
+}
+
+static void broadcast_start(ClientConn *clients, int connected_players) {
+    LobbyPacket start;
+    memset(&start, 0, sizeof(start));
+    start.msg_type = LOBBY_MSG_START;
+
+    for (int i = 0; i < connected_players; ++i) {
+        if (send_all(clients[i].sock, &start, sizeof(start)) != 0) {
+            log_error("Failed sending start to client %d: %s", i, strerror(errno));
+        }
+    }
+}
 
 static int recv_all(int sock, void *buffer, size_t size) {
     size_t total = 0;
@@ -125,7 +167,7 @@ int run_server(void) {
         connected_players++;
     }
 
-    log_info("Minimum players connected (%d). Starting game...", MIN_PLAYERS_TO_START);
+    log_info("Minimum players connected (%d). Entering ready lobby...", MIN_PLAYERS_TO_START);
     
     /* Send matchmaking info to all connected players */
     for (int i = 0; i < connected_players; ++i) {
@@ -134,6 +176,70 @@ int run_server(void) {
         if (send_all(clients[i].sock, &out, sizeof(out)) != 0) {
             log_error("Failed sending JoinResponse to client %d: %s", i, strerror(errno));
         }
+    }
+
+    int connected[MAX_PLAYERS] = {0};
+    int ready[MAX_PLAYERS] = {0};
+    for (int i = 0; i < connected_players; ++i) {
+        connected[i] = 1;
+    }
+
+    if (broadcast_lobby_state(clients, connected_players, connected, ready) != 0) {
+        for (int i = 0; i < connected_players; ++i) {
+            close(clients[i].sock);
+        }
+        close(listen_sock);
+        return 1;
+    }
+
+    while (!all_connected_ready(connected, ready)) {
+        fd_set set;
+        FD_ZERO(&set);
+        int maxfd = -1;
+
+        for (int i = 0; i < connected_players; ++i) {
+            FD_SET(clients[i].sock, &set);
+            if (clients[i].sock > maxfd) {
+                maxfd = clients[i].sock;
+            }
+        }
+
+        int ready_count = select(maxfd + 1, &set, NULL, NULL, NULL);
+        if (ready_count < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            log_error("Lobby select failed: %s", strerror(errno));
+            break;
+        }
+
+        for (int i = 0; i < connected_players; ++i) {
+            if (!FD_ISSET(clients[i].sock, &set)) {
+                continue;
+            }
+
+            LobbyPacket pkt;
+            if (recv_all(clients[i].sock, &pkt, sizeof(pkt)) != 0) {
+                log_error("Client %d disconnected during lobby", i);
+                connected[i] = 0;
+                ready[i] = 0;
+                continue;
+            }
+
+            if (pkt.msg_type == LOBBY_MSG_READY_TOGGLE && pkt.player_id == i) {
+                ready[i] = pkt.is_ready ? 1 : 0;
+                log_info("Player %d ready=%d", i, ready[i]);
+                if (broadcast_lobby_state(clients, connected_players, connected, ready) != 0) {
+                    break;
+                }
+            }
+        }
+    }
+
+    log_info("All connected players are ready. Starting game...");
+    broadcast_start(clients, connected_players);
+
+    for (int i = 0; i < connected_players; ++i) {
         close(clients[i].sock);
     }
 
