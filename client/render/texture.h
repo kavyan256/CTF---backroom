@@ -15,6 +15,9 @@ Texture *texture_load_ppm(const char *filepath);
 Texture *texture_create_placeholder(int width, int height, unsigned char r, unsigned char g, unsigned char b);
 Texture *texture_clone(const Texture *src);
 
+/* Upload texture to GPU (lazy) and bind to GL_TEXTURE_2D. Returns 0 on success. */
+int texture_bind_gl(Texture *tex);
+
 void texture_free(Texture *tex);
 
 /* Get pixel at position (safe bounds checking) */

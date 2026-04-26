@@ -1,4 +1,5 @@
 #include "texture.h"
+#include <GL/glut.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,6 +41,7 @@ Texture *texture_load_ppm(const char *filepath) {
 
     tex->width = width;
     tex->height = height;
+    tex->id = 0;
     tex->pixels = malloc(width * height * 4);
 
     if (!tex->pixels) {
@@ -80,6 +82,7 @@ Texture *texture_create_placeholder(int width, int height, unsigned char r, unsi
 
     tex->width = width;
     tex->height = height;
+    tex->id = 0;
     tex->pixels = malloc(width * height * 4);
 
     if (!tex->pixels) {
@@ -122,8 +125,49 @@ Texture *texture_clone(const Texture *src) {
     return clone;
 }
 
+int texture_bind_gl(Texture *tex) {
+    if (!tex || !tex->pixels || tex->width <= 0 || tex->height <= 0) {
+        return -1;
+    }
+
+    if (tex->id == 0) {
+        GLuint gl_id = 0;
+        glGenTextures(1, &gl_id);
+        if (gl_id == 0) {
+            return -1;
+        }
+        tex->id = (int)gl_id;
+
+        glBindTexture(GL_TEXTURE_2D, gl_id);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_RGBA,
+            tex->width,
+            tex->height,
+            0,
+            GL_RGBA,
+            GL_UNSIGNED_BYTE,
+            tex->pixels
+        );
+    } else {
+        glBindTexture(GL_TEXTURE_2D, (GLuint)tex->id);
+    }
+
+    return 0;
+}
+
 void texture_free(Texture *tex) {
     if (!tex) return;
+    if (tex->id != 0) {
+        GLuint gl_id = (GLuint)tex->id;
+        glDeleteTextures(1, &gl_id);
+        tex->id = 0;
+    }
     if (tex->pixels) free(tex->pixels);
     free(tex);
 }
