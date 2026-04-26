@@ -10,6 +10,15 @@
 #define RAY_STEP 0.1f
 #define MAX_RAY_DIST 100.0f
 
+static float g_depth_buffer[WIDTH];
+
+float raycaster_get_depth_at_column(int x) {
+    if (x < 0 || x >= WIDTH) {
+        return MAX_RAY_DIST;
+    }
+    return g_depth_buffer[x];
+}
+
 static void draw_wall_slice(int x, float dist, int wall_type) {
     if (dist <= 0.01f) return;
     
@@ -82,8 +91,10 @@ void raycaster_render(const PlayerState *player) {
         
         RayHit hit;
         if (raycaster_cast_ray(player, ray_angle, &hit)) {
+            g_depth_buffer[x] = hit.dist;
             draw_wall_slice(x, hit.dist, hit.wall_type);
         } else {
+            g_depth_buffer[x] = MAX_RAY_DIST;
             /* Sky */
             glColor3f(0.2f, 0.3f, 0.5f);
             glBegin(GL_QUADS);

@@ -112,14 +112,6 @@ void sprite_render_players(const PlayerState *camera) {
             continue;
         }
         
-        /* Check for wall occlusion - raycast to sprite direction and see if wall is closer */
-        RayHit hit;
-        if (raycaster_cast_ray(camera, angle_to_sprite, &hit)) {
-            if (hit.dist < dist - 0.3f) {
-                continue; /* Wall is closer, don't render sprite */
-            }
-        }
-        
         /* Calculate screen position from angle relative to FOV */
         float screen_x_center = WIDTH * (0.5f + (angle_diff / camera->fov));
         
@@ -139,12 +131,41 @@ void sprite_render_players(const PlayerState *camera) {
             continue;
         }
 
+        int x_start = (int)floorf(screen_x);
+        int x_end = (int)ceilf(screen_x + sprite_screen_width) - 1;
+        if (x_start < 0) x_start = 0;
+        if (x_end >= WIDTH) x_end = WIDTH - 1;
+        if (x_start > x_end || sprite_screen_width <= 0.001f) {
+            continue;
+        }
+
+        const float inv_w = 1.0f / sprite_screen_width;
+
         glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         glBegin(GL_QUADS);
-        glTexCoord2f(0.0f, 0.0f); glVertex2f(screen_x, screen_y);
-        glTexCoord2f(1.0f, 0.0f); glVertex2f(screen_x + sprite_screen_width, screen_y);
-        glTexCoord2f(1.0f, 1.0f); glVertex2f(screen_x + sprite_screen_width, screen_y + sprite_screen_height);
-        glTexCoord2f(0.0f, 1.0f); glVertex2f(screen_x, screen_y + sprite_screen_height);
+        for (int sx = x_start; sx <= x_end; ++sx) {
+            float wall_dist = raycaster_get_depth_at_column(sx);
+            if (dist > wall_dist + 0.02f) {
+                continue;
+            }
+
+            float x1 = (float)sx;
+            float x2 = (float)(sx + 1);
+            float u1 = (x1 - screen_x) * inv_w;
+            float u2 = (x2 - screen_x) * inv_w;
+
+            if (u2 <= 0.0f || u1 >= 1.0f) {
+                continue;
+            }
+
+            if (u1 < 0.0f) u1 = 0.0f;
+            if (u2 > 1.0f) u2 = 1.0f;
+
+            glTexCoord2f(u1, 0.0f); glVertex2f(x1, screen_y);
+            glTexCoord2f(u2, 0.0f); glVertex2f(x2, screen_y);
+            glTexCoord2f(u2, 1.0f); glVertex2f(x2, screen_y + sprite_screen_height);
+            glTexCoord2f(u1, 1.0f); glVertex2f(x1, screen_y + sprite_screen_height);
+        }
         glEnd();
 
         /* Highlight flag holder with a yellow border */

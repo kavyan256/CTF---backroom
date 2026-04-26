@@ -12,5 +12,6 @@ typedef struct {
 
 void raycaster_render(const PlayerState *player);
 int raycaster_cast_ray(const PlayerState *player, float angle, RayHit *out);
+float raycaster_get_depth_at_column(int x);
 
 #endif
