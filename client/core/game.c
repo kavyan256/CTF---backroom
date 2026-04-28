@@ -332,14 +332,13 @@ void game_update_step(void) {
                 g_game.flag_steal_cooldown = FLAG_STEAL_COOLDOWN_SEC;
                 printf("CTF: Player %d stole the flag from Player %d\n", new_holder, prev_holder);
 
+                snprintf(g_game.flag_event_text, sizeof(g_game.flag_event_text),
+                         "Player %d stole the flag from Player %d", new_holder, prev_holder);
                 if (new_holder == g_game.local_player_id) {
-                    snprintf(g_game.flag_event_text, sizeof(g_game.flag_event_text), "You captured the flag!");
                     g_game.flag_event_type = 1;
                 } else if (prev_holder == g_game.local_player_id) {
-                    snprintf(g_game.flag_event_text, sizeof(g_game.flag_event_text), "You lost the flag!");
                     g_game.flag_event_type = -1;
                 } else {
-                    snprintf(g_game.flag_event_text, sizeof(g_game.flag_event_text), "Player %d captured the flag", new_holder);
                     g_game.flag_event_type = 0;
                 }
                 g_game.flag_event_timer = 2.2f;

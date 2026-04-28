@@ -138,7 +138,7 @@ void raycaster_render(const PlayerState *player) {
     int flag_holder = game_get_flag_holder();
     float flag_cd = game_get_flag_cooldown();
     char ctf_buf[128];
-    snprintf(ctf_buf, sizeof(ctf_buf), "FLAG: P%d | Steal cooldown: %.1fs", flag_holder, flag_cd);
+    snprintf(ctf_buf, sizeof(ctf_buf), "FLAG HOLDER: P%d | Steal cooldown: %.1fs", flag_holder, flag_cd);
     glColor3f(1.0f, 0.9f, 0.2f);
     glRasterPos2f(10, 94);
     for (char *c = ctf_buf; *c; c++) {
@@ -209,7 +209,11 @@ void raycaster_render(const PlayerState *player) {
         char rank_line[128];
         int pid = rank_ids[r];
         int steals = game_get_flag_steals(pid);
-        snprintf(rank_line, sizeof(rank_line), "%d) P%d  %.1fs  steals:%d", r + 1, pid, rank_times[r], steals);
+        if (pid == flag_holder) {
+            snprintf(rank_line, sizeof(rank_line), "%d) P%d  %.1fs  steals:%d  [FLAG]", r + 1, pid, rank_times[r], steals);
+        } else {
+            snprintf(rank_line, sizeof(rank_line), "%d) P%d  %.1fs  steals:%d", r + 1, pid, rank_times[r], steals);
+        }
         glRasterPos2f(10, (float)(126 + r * 14));
         for (char *c = rank_line; *c; c++) {
             glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
