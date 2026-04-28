@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -Werror -std=c11 -O2 -DLOG_LEVEL=LOG_LEVEL_INFO
 CFLAGS += -Icommon -Iclient -Iclient/core -Iclient/networking -Iclient/simulation
-CFLAGS += -Iclient/input -Iclient/render -Iclient/util
+CFLAGS += -Iclient/input -Iclient/render
 
 LDFLAGS_CLIENT = -lGL -lGLU -lglut -lpthread -lm
 LDFLAGS_SERVER = -lpthread
@@ -20,8 +20,7 @@ CLIENT_SRCS = \
 	client/render/render.c \
 	client/render/raycaster.c \
 	client/render/texture.c \
-	client/render/sprite.c \
-	client/util/math_utils.c
+	client/render/sprite.c
 
 SERVER_BIN = build/server_app
 CLIENT_BIN = build/client_app
