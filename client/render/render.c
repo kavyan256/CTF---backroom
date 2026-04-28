@@ -178,8 +178,9 @@ static void render_lobby_screen(void) {
 
         const int is_local = (i == g_game.local_player_id);
         const int is_ready = game_get_player_ready(i);
+        const char *name = game_get_player_name(i);
         char line[128];
-        snprintf(line, sizeof(line), "Player %d%s  -  %s", i, is_local ? " (You)" : "", is_ready ? "READY" : "NOT READY");
+        snprintf(line, sizeof(line), "%s%s  -  %s", name, is_local ? " (You)" : "", is_ready ? "READY" : "NOT READY");
 
         if (is_ready) {
             glColor3f(0.4f, 1.0f, 0.5f);

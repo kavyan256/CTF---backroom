@@ -128,8 +128,9 @@ void raycaster_render(const PlayerState *player) {
     glColor3f(1.0f, 1.0f, 0.0f);
     glRasterPos2f(10, 20);
     char buf[128];
-    snprintf(buf, sizeof(buf), "Player %d | Pos: (%.1f, %.1f) | Angle: %.2f", 
-             g_game.local_player_id, player->x, player->y, player->angle);
+    const char *local_name = game_get_player_name(g_game.local_player_id);
+    snprintf(buf, sizeof(buf), "%s | Pos: (%.1f, %.1f) | Angle: %.2f", 
+             local_name, player->x, player->y, player->angle);
     for (char *c = buf; *c; c++) {
         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
     }
@@ -138,7 +139,8 @@ void raycaster_render(const PlayerState *player) {
     int flag_holder = game_get_flag_holder();
     float flag_cd = game_get_flag_cooldown();
     char ctf_buf[128];
-    snprintf(ctf_buf, sizeof(ctf_buf), "FLAG HOLDER: P%d | Steal cooldown: %.1fs", flag_holder, flag_cd);
+    const char *flag_name = (flag_holder >= 0) ? game_get_player_name(flag_holder) : "(none)";
+    snprintf(ctf_buf, sizeof(ctf_buf), "FLAG HOLDER: %s | Steal cooldown: %.1fs", flag_name, flag_cd);
     glColor3f(1.0f, 0.9f, 0.2f);
     glRasterPos2f(10, 94);
     for (char *c = ctf_buf; *c; c++) {
@@ -209,10 +211,11 @@ void raycaster_render(const PlayerState *player) {
         char rank_line[128];
         int pid = rank_ids[r];
         int steals = game_get_flag_steals(pid);
+        const char *pname = game_get_player_name(pid);
         if (pid == flag_holder) {
-            snprintf(rank_line, sizeof(rank_line), "%d) P%d  %.1fs  steals:%d  [FLAG]", r + 1, pid, rank_times[r], steals);
+            snprintf(rank_line, sizeof(rank_line), "%d) %s  %.1fs  steals:%d  [FLAG]", r + 1, pname, rank_times[r], steals);
         } else {
-            snprintf(rank_line, sizeof(rank_line), "%d) P%d  %.1fs  steals:%d", r + 1, pid, rank_times[r], steals);
+            snprintf(rank_line, sizeof(rank_line), "%d) %s  %.1fs  steals:%d", r + 1, pname, rank_times[r], steals);
         }
         glRasterPos2f(10, (float)(126 + r * 14));
         for (char *c = rank_line; *c; c++) {

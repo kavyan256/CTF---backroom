@@ -26,6 +26,7 @@ typedef struct {
     PlayerState players[MAX_PLAYERS];
     PlayerState local_player;
     char texture_files[MAX_PLAYERS][128];
+    char player_names[MAX_PLAYERS][32];
     int flag_holder;
     float flag_hold_time[MAX_PLAYERS];
     int flag_steals[MAX_PLAYERS];
@@ -68,6 +69,10 @@ float game_get_flag_cooldown(void);
 const char *game_get_flag_event_text(void);
 float game_get_flag_event_time_left(void);
 int game_get_flag_event_type(void);
+
+/* Player name support */
+void game_set_player_name(int player_id, const char *name);
+const char *game_get_player_name(int player_id);
 
 int game_is_local_region(float x, float y, int player_id);
 

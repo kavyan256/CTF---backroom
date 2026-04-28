@@ -84,7 +84,7 @@ static void timer_cb(int value) {
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s <server_ip>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <server_ip> [player_name]\n", argv[0]);
         return 1;
     }
 
@@ -99,7 +99,8 @@ int main(int argc, char **argv) {
     }
 
     JoinResponse join;
-    if (connect_to_server(argv[1], listen_port, &join, &g_server_sock) != 0) {
+    const char *my_name = (argc >= 3) ? argv[2] : NULL;
+    if (connect_to_server(argv[1], listen_port, my_name, &join, &g_server_sock) != 0) {
         log_error("Failed to connect to server");
         close(g_listener_sock);
         return 1;
@@ -117,6 +118,9 @@ int main(int argc, char **argv) {
 
     sprite_manager_init();
     game_init(local_id, &join);
+    if (my_name) {
+        game_set_player_name(local_id, my_name);
+    }
 
     recv_thread_set_server_socket(g_server_sock);
     g_server_sock = -1;

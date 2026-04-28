@@ -80,7 +80,7 @@ int create_client_listener(int *out_port) {
     return sock;
 }
 
-int connect_to_server(const char *server_ip, int listen_port, JoinResponse *out, int *out_server_sock) {
+int connect_to_server(const char *server_ip, int listen_port, const char *name, JoinResponse *out, int *out_server_sock) {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) {
         perror("socket");
@@ -105,6 +105,11 @@ int connect_to_server(const char *server_ip, int listen_port, JoinResponse *out,
 
     JoinRequest req;
     req.listen_port = listen_port;
+    if (name) {
+        snprintf(req.name, sizeof(req.name), "%s", name);
+    } else {
+        req.name[0] = '\0';
+    }
     if (send_all(sock, &req, sizeof(req)) != 0) {
         fprintf(stderr, "Failed to send JoinRequest\n");
         close(sock);

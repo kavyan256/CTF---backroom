@@ -181,6 +181,12 @@ int run_server(void) {
         join_payload.players[connected_players].player_id = connected_players;
         snprintf(join_payload.players[connected_players].ip, sizeof(join_payload.players[connected_players].ip), "%s", ipbuf);
         join_payload.players[connected_players].port = clients[connected_players].join_req.listen_port;
+        /* Copy player name if provided by client */
+        if (clients[connected_players].join_req.name[0] != '\0') {
+            snprintf(join_payload.players[connected_players].name, sizeof(join_payload.players[connected_players].name), "%s", clients[connected_players].join_req.name);
+        } else {
+            snprintf(join_payload.players[connected_players].name, sizeof(join_payload.players[connected_players].name), "P%d", connected_players);
+        }
 
         log_info("Assigned Player %d (listen port: %d)", connected_players, clients[connected_players].join_req.listen_port);
         connected_players++;

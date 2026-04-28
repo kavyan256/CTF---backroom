@@ -20,6 +20,7 @@ typedef struct {
     int player_id;
     char ip[64];
     int port;
+    char name[32];
 } PlayerInfo;
 
 typedef struct {
@@ -29,6 +30,7 @@ typedef struct {
 
 typedef struct {
     int listen_port;
+    char name[32];
 } JoinRequest;
 
 typedef struct {

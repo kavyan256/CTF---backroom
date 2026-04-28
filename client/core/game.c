@@ -147,6 +147,12 @@ void game_init(int local_player_id, const JoinResponse *join_info) {
         g_game.connected_players[i] = (join_info->players[i].ip[0] != '\0') ? 1 : 0;
         g_game.ready_players[i] = 0;
         g_game.selected_character[i] = i % g_character_count;
+        /* Initialize player names from join info if present */
+        if (join_info->players[i].name[0] != '\0') {
+            snprintf(g_game.player_names[i], sizeof(g_game.player_names[i]), "%s", join_info->players[i].name);
+        } else {
+            snprintf(g_game.player_names[i], sizeof(g_game.player_names[i]), "P%d", i);
+        }
     }
     g_game.game_started = 0;
     g_game.flag_holder = -1;
@@ -198,7 +204,7 @@ void game_init(int local_player_id, const JoinResponse *join_info) {
     
     printf("Game initialized for player %d\n", local_player_id);
     if (g_game.flag_holder >= 0) {
-        printf("CTF: Player %d starts with the flag\n", g_game.flag_holder);
+        printf("CTF: %s starts with the flag\n", g_game.player_names[g_game.flag_holder]);
     }
 }
 
@@ -330,10 +336,16 @@ void game_update_step(void) {
                 g_game.flag_holder = new_holder;
                 g_game.flag_steals[new_holder] += 1;
                 g_game.flag_steal_cooldown = FLAG_STEAL_COOLDOWN_SEC;
-                printf("CTF: Player %d stole the flag from Player %d\n", new_holder, prev_holder);
+                  printf("CTF: %s stole the flag from %s\n",
+                      g_game.player_names[new_holder], g_game.player_names[prev_holder]);
 
+                /* Use player names for shared event text */
+                char new_name[32];
+                char prev_name[32];
+                snprintf(new_name, sizeof(new_name), "%s", g_game.player_names[new_holder]);
+                snprintf(prev_name, sizeof(prev_name), "%s", g_game.player_names[prev_holder]);
                 snprintf(g_game.flag_event_text, sizeof(g_game.flag_event_text),
-                         "Player %d stole the flag from Player %d", new_holder, prev_holder);
+                         "%s stole the flag from %s", new_name, prev_name);
                 if (new_holder == g_game.local_player_id) {
                     g_game.flag_event_type = 1;
                 } else if (prev_holder == g_game.local_player_id) {
@@ -577,4 +589,20 @@ int game_get_flag_event_type(void) {
     type = g_game.flag_event_type;
     pthread_mutex_unlock(&g_game.player_mutex);
     return type;
+}
+
+void game_set_player_name(int player_id, const char *name) {
+    if (player_id < 0 || player_id >= MAX_PLAYERS || !name) return;
+    pthread_mutex_lock(&g_game.player_mutex);
+    snprintf(g_game.player_names[player_id], sizeof(g_game.player_names[player_id]), "%s", name);
+    pthread_mutex_unlock(&g_game.player_mutex);
+}
+
+const char *game_get_player_name(int player_id) {
+    static char tmp[32];
+    if (player_id < 0 || player_id >= MAX_PLAYERS) return "(none)";
+    pthread_mutex_lock(&g_game.player_mutex);
+    snprintf(tmp, sizeof(tmp), "%s", g_game.player_names[player_id]);
+    pthread_mutex_unlock(&g_game.player_mutex);
+    return tmp;
 }
