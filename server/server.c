@@ -230,6 +230,12 @@ int run_server(void) {
         FD_ZERO(&set);
         int maxfd = -1;
 
+        /* Listen for new player connections during lobby */
+        if (connected_players < MAX_PLAYERS) {
+            FD_SET(listen_sock, &set);
+            maxfd = listen_sock;
+        }
+
         for (int i = 0; i < connected_players; ++i) {
             FD_SET(clients[i].sock, &set);
             if (clients[i].sock > maxfd) {
@@ -244,6 +250,50 @@ int run_server(void) {
             }
             log_error("Lobby select failed: %s", strerror(errno));
             break;
+        }
+
+        /* Accept new player connection during lobby if space available */
+        if (connected_players < MAX_PLAYERS && FD_ISSET(listen_sock, &set)) {
+            socklen_t len = sizeof(clients[connected_players].addr);
+            int client_sock = accept(listen_sock, (struct sockaddr *)&clients[connected_players].addr, &len);
+            if (client_sock >= 0) {
+                char ipbuf[64] = {0};
+                inet_ntop(AF_INET, &clients[connected_players].addr.sin_addr, ipbuf, sizeof(ipbuf));
+                log_info("New client connected from %s during lobby", ipbuf);
+
+                if (recv_all(client_sock, &clients[connected_players].join_req, sizeof(clients[connected_players].join_req)) == 0) {
+                    clients[connected_players].sock = client_sock;
+                    join_payload.players[connected_players].player_id = connected_players;
+                    snprintf(join_payload.players[connected_players].ip, sizeof(join_payload.players[connected_players].ip), "%s", ipbuf);
+                    join_payload.players[connected_players].port = clients[connected_players].join_req.listen_port;
+                    if (clients[connected_players].join_req.name[0] != '\0') {
+                        snprintf(join_payload.players[connected_players].name, sizeof(join_payload.players[connected_players].name), "%s", clients[connected_players].join_req.name);
+                    } else {
+                        snprintf(join_payload.players[connected_players].name, sizeof(join_payload.players[connected_players].name), "P%d", connected_players);
+                    }
+                    log_info("Assigned Player %d during lobby (listen port: %d)", connected_players, clients[connected_players].join_req.listen_port);
+                    connected[connected_players] = 1;
+                    selected_character[connected_players] = connected_players;
+                    connected_players++;
+                    
+                    /* Send updated join payload to new player */
+                    JoinResponse out = join_payload;
+                    out.assigned_id = connected_players - 1;
+                    if (send_all(clients[connected_players - 1].sock, &out, sizeof(out)) != 0) {
+                        log_error("Failed sending JoinResponse to new client: %s", strerror(errno));
+                    }
+                    
+                    /* Broadcast updated lobby state to all */
+                    if (broadcast_lobby_state(clients, connected_players, connected, ready, selected_character) != 0) {
+                        log_error("Failed to broadcast updated lobby state");
+                    }
+                } else {
+                    log_error("Failed receiving JoinRequest from new client: %s", strerror(errno));
+                    close(client_sock);
+                }
+            } else {
+                log_error("Accept failed during lobby: %s", strerror(errno));
+            }
         }
 
         for (int i = 0; i < connected_players; ++i) {
