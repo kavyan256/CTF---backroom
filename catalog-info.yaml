@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: CTF---backroom          # replace with actual repo name
+  description: computer graphics and visualization project, is a 2.5D ray scaling based project
+  annotations:
+    github.com/project-slug: kavyan256/CTF---backroom
+  links:
+    - url: https://github.com/kavyan256/CTF---backroom
+      title: GitHub
+      icon: github
+spec:
+  type: service
+  lifecycle: production
+  owner: user:kavyan256
