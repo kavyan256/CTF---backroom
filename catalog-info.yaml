@@ -5,11 +5,12 @@ metadata:
   description: computer graphics and visualization project, is a 2.5D ray scaling based project
   annotations:
     github.com/project-slug: kavyan256/CTF---backroom
+    backstage.io/techdocs-ref: dir:.
   links:
     - url: https://github.com/kavyan256/CTF---backroom
       title: GitHub
       icon: github
 spec:
   type: service
-  lifecycle: production
+  lifecycle: development
   owner: user:kavyan256
