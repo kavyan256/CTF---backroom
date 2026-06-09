@@ -1,0 +1,11 @@
+site_name: CTF Backroom
+site_description: Computer Graphics Project
+docs_dir: docs
+
+nav:
+  - Home: index.md
+  - Setup: setup.md
+  - How it works: how-it-works.md
+
+plugins:
+  - techdocs-core
