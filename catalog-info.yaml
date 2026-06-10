@@ -11,6 +11,6 @@ metadata:
       title: GitHub
       icon: github
 spec:
-  type: service
-  lifecycle: development
+  type: library
+  lifecycle: completed
   owner: user:kavyan256
